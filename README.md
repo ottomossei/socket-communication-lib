@@ -50,30 +50,38 @@ Below is a diagram of the software stack used in this project.
 
 ```mermaid
 graph TD;
-    %% KernelSpace: VFSやネットワークサブシステムが管理されるカーネル領域
-    subgraph KernelSpace [Kernel Space]
-        KernelVFS[VFS: Virtual File System] --> Filesystem[Filesystem Layer];
-        Filesystem --> UDS[Unix Domain Socket];
-        Filesystem --> IPC[IPC: Inter-Process Communication];
-        IPC --> KernelMemory[Shared Memory, Signals];
-
-        KernelNetwork[Network Subsystem: socket operations] --> KernelVFS;
-    end
-
     %% UserSpace: クライアントとサーバーが動作する領域
     subgraph UserSpace [User Space]
-        ClientProcess[Client Process: nc -U /tmp/uds_socket] -->|socket, connect, send syscall| KernelNetwork;
-        ServerProcess[Server Process] -->|create Server| libsocketcomm.so;
-        libsocketcomm.so[libsocketcomm.so] -->|socket, bind, listen, accept syscall| KernelNetwork;
+        ClientProcess[Client Process: nc -U /tmp/uds_socket]
+        ServerProcess[Server Process]
+        libsocketcomm.so[libsocketcomm.so]
+
+        ClientProcess -->|socket AF_UNIX, connect, send| SocketAPI
+        ServerProcess -->|Server Creation Request| libsocketcomm.so
+        libsocketcomm.so -->|socket AF_UNIX, bind, listen, accept| SocketAPI
     end
 
-    %% HardwareLayer: ハードウェア層
-    subgraph HardwareLayer [Hardware Layer]
-        Hardware[Hardware Resources: CPU, Memory, I/O]
-    end
+    %% カーネル空間へのシステムコールインターフェース
+    SocketAPI -.システムコール.-> SocketLayer
 
-    %% フローの矢印 (システムコールやデータフロー)
-    KernelSpace -->|I/O operations| HardwareLayer;
+    %% KernelSpace: カーネル領域でのUDS関連コンポーネント
+    subgraph KernelSpace [Kernel Space]
+        SocketLayer[Socket Layer]
+
+        %% アドレスファミリーとプロトコルファミリー
+        SocketLayer -->|AF_UNIX / PF_UNIX| ProtocolFamily
+
+        %% ソケットタイプ
+        ProtocolFamily -->|SOCK_STREAM / SOCK_DGRAM| SocketType
+
+        %% Unixドメインソケット
+        SocketType --> UDS[Unix Domain Socket]
+        UDS --> SocketBuffers[Socket Buffers]
+        UDS --> SockFS[SockFS - Socket Filesystem]
+        SockFS --> VFS[VFS: Virtual File System]
+        VFS --> Filesystem[Filesystem Layer]
+        UDS --> IPCMechanisms[IPC Mechanisms]
+    end
 ```
 
 This diagram shows how the client interacts with the Unix domain socket, which is managed by the shared library.
