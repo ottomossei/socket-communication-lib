@@ -189,9 +189,27 @@ namespace socketcomm
             {
                 buf[n] = '\0';
                 LOG_VERBOSE("Data received: " + std::string(buf));
+                std::string response;
+
                 if (callback_)
                 {
+                    // コールバックは実行するが、応答には固定メッセージを返す
                     callback_(std::string(buf));
+                    response = "Server processed the data.\n";
+                }
+                else
+                {
+                    response = "Server received: " + std::string(buf);
+                }
+
+                // クライアントに応答を送信
+                if (write(client_fd, response.c_str(), response.size()) == -1)
+                {
+                    LOG_ERROR("Failed to send response: " + std::string(strerror(errno)));
+                }
+                else
+                {
+                    LOG_VERBOSE("Response sent: " + response);
                 }
             }
             else if (n == -1)
