@@ -62,7 +62,7 @@ graph TD;
     end
 
     %% カーネル空間へのシステムコールインターフェース
-    SocketAPI -.システムコール.-> SocketLayer
+    SocketAPI -.System call.-> SocketLayer
 
     %% KernelSpace: カーネル領域でのUDS関連コンポーネント
     subgraph KernelSpace [Kernel Space]
